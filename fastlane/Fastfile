@@ -67,8 +67,11 @@ platform :ios do
     group = groups.find { |item| item.id == ENV.fetch('TESTFLIGHT_INTERNAL_GROUP_ID') }
     UI.user_error!('Target beta group must exist and be internal') unless group && group.is_internal_group
     # Never call betaAppReviewSubmissions or the public App Store release API.
-    build.add_beta_groups(beta_groups: [group])
     group_builds = group.fetch_builds
+    unless group_builds.any? { |item| item.id == build.id }
+      build.add_beta_groups(beta_groups: [group])
+      group_builds = group.fetch_builds
+    end
     UI.user_error!('Build is not attached to the internal group') unless group_builds.any? { |item| item.id == build.id }
     testers = group.beta_testers || []
     UI.user_error!('Internal group has no testers; add your Apple account in App Store Connect') if testers.empty?

@@ -10,6 +10,8 @@ on:
       - 'localLLM.xcodeproj/**'
       - 'dependencies/**'
       - 'scripts/**'
+      - 'fastlane/**'
+      - 'Gemfile*'
       - '.github/workflows/ios-verify.yml'
 
 permissions:
@@ -29,6 +31,10 @@ jobs:
         run: python3 scripts/bootstrap.py
       - name: Verify published Qwen QPack metadata
         run: python3 scripts/check_model_source.py
+      - name: Check distribution automation syntax
+        run: |
+          ruby -c fastlane/Fastfile
+          bash -n scripts/prepare-signing.sh
       - name: Test Swiftlet container, streaming, cache and generation
         # Blocking concurrency probes have short deadlines; run suites serially
         # so unrelated Metal compilations cannot starve their executor threads.
@@ -50,3 +56,15 @@ jobs:
         run: |
           python3 scripts/verify_app_bundle.py \
             "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/localLLM.app"
+      - name: Save resolved dependency versions and model metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-verification
+          include-hidden-files: true
+          path: |
+            localLLM.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+            .dependencies/swiftlet/Package.resolved
+            build/model-source-verification.json
+          retention-days: 1
+          if-no-files-found: error

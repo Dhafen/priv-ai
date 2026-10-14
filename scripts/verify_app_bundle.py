@@ -22,7 +22,10 @@ def main():
     assert kernels, 'Swiftlet Metal kernel resource missing'
     executable = app / info['CFBundleExecutable']
     symbols = subprocess.check_output(['strings', str(executable)], text=True)
-    for marker in ('Qwen3.6-35B-A3B-qpack', 'SwiftletEngine', 'QPACK'):
+    # Swift can encode short strings such as "QPACK" as immediate integers,
+    # so strings(1) cannot reliably find that magic value in optimized code.
+    # Session diagnostics and the download source remain in the actual binary.
+    for marker in ('Qwen3.6-35B-A3B-qpack', 'SwiftletEngine', 'SwiftletSession'):
         assert marker in symbols, f'Compiled Swiftlet/model marker missing: {marker}'
     if args.signed:
         subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
