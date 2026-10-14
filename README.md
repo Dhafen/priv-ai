@@ -6,6 +6,9 @@
 
 # Priv AI (LocalLLM)
 
+Personal TestFlight fork: [Dhafen/priv-ai](https://github.com/Dhafen/priv-ai).
+Cloud build, signing, and iPhone installation: [TestFlight guide](docs/TESTFLIGHT.md).
+
 Private AI assistant that runs entirely on your device. No cloud, no accounts, no tracking.
 
 <p align="center">
@@ -46,46 +49,28 @@ Maintainers can also build the compatible Heretic 35B QPack with the manual, Tru
 
 For health and finance features, the app uses Apple's on-device frameworks (HealthKit, Vision OCR, PDFKit) to gather data, then feeds it as context to the LLM for analysis.
 
-## Building from source
+## Building from Windows in the cloud
 
-### Requirements
+See [the TestFlight guide](docs/TESTFLIGHT.md) for the complete setup and installation procedure.
+GitHub Actions runs the Swiftlet tests and builds with Xcode 26.2 on macOS 26.
+The signed distribution workflow delivers internal TestFlight builds only.
 
-- macOS 14+ (Sonoma or later)
-- Xcode 16+
-- Physical iOS device running iOS 17+ (simulator works for UI but not HealthKit/inference)
-- Apple Developer account (free tier works for personal device testing)
-
-### Steps
+For a source checkout:
 
 ```bash
-# 1. Clone the app and the Swiftlet engine side by side
-#    (the project references ../swiftlet as a local package)
-git clone https://github.com/leonickson1/localLLM.git
-git clone https://github.com/leonickson1/Swiftlet.git swiftlet
-cd localLLM
-
-# 2. Open in Xcode
-open localLLM.xcodeproj
+git clone https://github.com/Dhafen/priv-ai.git
+cd priv-ai
+python scripts/bootstrap.py
 ```
 
-3. Wait for SPM to resolve the [llama.swift](https://github.com/mattt/llama.swift) dependency (takes ~1 min first time)
-4. **Change the Bundle Identifier** in Signing & Capabilities. The existing `com.monishsoundarraj.PrivAI` is registered to the original developer's team and Apple will reject it. Use something unique like `com.yourname.PrivAI`
-5. **Set your Development Team** in Signing & Capabilities (Xcode will prompt you on first build)
-6. Select your iOS device as the run destination (simulator works for UI, but HealthKit and llama.cpp inference need a real device)
-7. Hit **Cmd+R** to build and run
-8. On first launch, accept the terms screen and download a model from the built-in catalog
+Swiftlet is fetched at the exact revision in `dependencies/swiftlet.json` into
+`.dependencies/swiftlet`, which is the local package referenced by Xcode.
+The app's Bundle ID is `com.dhafen.privai`; its Apple team is supplied by your
+own signing configuration. The original developer's team is not used.
 
-## SideStore
-
-Tagged releases publish both the unsigned IPA and a SideStore-compatible source. After the first `v*` release is available, add this source URL in SideStore:
-
-```text
-https://raw.githubusercontent.com/jbenzaquen42/localllm/main/source.json
-```
-
-The canonical feed points to each matching release IPA, so future tagged releases appear as updates in SideStore. The older `releases/latest/download/sidestore.json` URL remains published as a compatibility alias.
-
-> **Apple Developer account note:** A free account is fine for running it on your own device. HealthKit capability works on free accounts for personal builds, you don't need the paid $99/yr program unless you want to distribute via TestFlight or the App Store.
+To build locally on a Mac, use Xcode 26.2+, open `localLLM.xcodeproj`, select your
+Apple team and the shared `localLLM` scheme, and build for a physical iPhone
+running iOS 17+. Windows does not need a local Swift or Xcode installation.
 
 ### Troubleshooting
 

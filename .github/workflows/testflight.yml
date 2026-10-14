@@ -82,4 +82,3 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/privai-signing.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/privai-signing"
-

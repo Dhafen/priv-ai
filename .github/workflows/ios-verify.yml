@@ -30,7 +30,9 @@ jobs:
       - name: Verify published Qwen QPack metadata
         run: python3 scripts/check_model_source.py
       - name: Test Swiftlet container, streaming, cache and generation
-        run: swift test --package-path .dependencies/swiftlet
+        # Blocking concurrency probes have short deadlines; run suites serially
+        # so unrelated Metal compilations cannot starve their executor threads.
+        run: swift test --package-path .dependencies/swiftlet --no-parallel
       - name: Resolve application dependencies
         run: |
           xcodebuild -version
@@ -48,4 +50,3 @@ jobs:
         run: |
           python3 scripts/verify_app_bundle.py \
             "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/localLLM.app"
-
