@@ -19,6 +19,14 @@ platform :ios do
     next_build = latest_testflight_build_number(
       api_key: api_key, app_identifier: BUNDLE_ID, initial_build_number: 0
     ) + 1
+    # Scope the distribution profile to the app. Package resources and host
+    # macro tools cannot use an iOS application provisioning profile.
+    update_code_signing_settings(
+      path: 'localLLM.xcodeproj', use_automatic_signing: false,
+      targets: ['localLLM'], build_configurations: ['Release'],
+      team_id: ENV.fetch('APPLE_TEAM_ID'), code_sign_identity: 'Apple Distribution',
+      profile_uuid: ENV.fetch('PROFILE_UUID'), profile_name: ENV.fetch('PROFILE_UUID')
+    )
     build_app(
       project: 'localLLM.xcodeproj', scheme: 'localLLM', configuration: 'Release',
       clean: true, skip_package_dependencies_resolution: false,
@@ -26,13 +34,9 @@ platform :ios do
       output_name: 'PrivAI.ipa',
       export_method: 'app-store',
       export_team_id: ENV.fetch('APPLE_TEAM_ID'),
-      codesigning_identity: 'Apple Distribution',
       xcargs: [
-        '-skipMacroValidation', '-onlyUsePackageVersionsFromResolvedFile', 'CODE_SIGN_STYLE=Manual',
-        "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
-        "CURRENT_PROJECT_VERSION=#{next_build}",
-        "PROVISIONING_PROFILE_SPECIFIER=#{ENV.fetch('PROFILE_UUID')}",
-        "CODE_SIGN_IDENTITY='Apple Distribution'"
+        '-skipMacroValidation', '-onlyUsePackageVersionsFromResolvedFile',
+        "CURRENT_PROJECT_VERSION=#{next_build}"
       ].join(' '),
       export_options: {
         method: 'app-store-connect', signingStyle: 'manual',
