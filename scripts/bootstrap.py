@@ -1,6 +1,7 @@
 """Fetch the exact Swiftlet source used by local and cloud builds."""
 import json
 from pathlib import Path
+import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,14 @@ def main():
     git("checkout", "--detach", LOCK["revision"])
     if git("rev-parse", "HEAD", capture=True) != LOCK["revision"]:
         raise SystemExit("Swiftlet revision verification failed")
+    # Keep generated SPM files out of Git while versioning their authoritative
+    # copies beside the engine revision. Both cloud workflows use this setup.
+    for source, target in (
+        (ROOT / "dependencies/swiftlet.Package.resolved", DEST / "Package.resolved"),
+        (ROOT / "dependencies/app.Package.resolved", ROOT / "localLLM.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"),
+    ):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
     print(f"Swiftlet ready: {LOCK['revision']}")
 
 

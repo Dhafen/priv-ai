@@ -42,17 +42,20 @@ jobs:
       - name: Test Swiftlet container, streaming, cache and generation
         # Blocking concurrency probes have short deadlines; run suites serially
         # so unrelated Metal compilations cannot starve their executor threads.
-        run: swift test --package-path .dependencies/swiftlet --no-parallel
+        run: |
+          swift test --package-path .dependencies/swiftlet --no-parallel --force-resolved-versions
+          python3 scripts/check_dependency_locks.py engine
       - name: Resolve application dependencies
         run: |
           xcodebuild -version
-          xcodebuild -resolvePackageDependencies -skipMacroValidation \
+          xcodebuild -resolvePackageDependencies -skipMacroValidation -onlyUsePackageVersionsFromResolvedFile \
             -project localLLM.xcodeproj -scheme localLLM
+          python3 scripts/check_dependency_locks.py app
       - name: Build iPhone application with every inference engine
         run: |
           set -euo pipefail
           xcodebuild -project localLLM.xcodeproj -scheme localLLM \
-            -skipMacroValidation -configuration Release -sdk iphoneos \
+            -skipMacroValidation -onlyUsePackageVersionsFromResolvedFile -configuration Release -sdk iphoneos \
             -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             DEVELOPMENT_TEAM='' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' build

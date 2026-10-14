@@ -21,6 +21,13 @@ För lokala Xcode-byggen på en Mac: kör bootstrap-kommandot, öppna
 `localLLM.xcodeproj`, välj ditt Apple-team och bygg det delade schemat `localLLM`.
 Projektet innehåller inget förvalt utvecklarteam.
 
+SPM-versionerna för både appen och motortesterna ligger i
+`dependencies/app.Package.resolved` och `dependencies/swiftlet.Package.resolved`.
+Bootstrap installerar dessa i respektive verktygs genererade katalog. Delade
+paket använder samma revision i tester och app; upplösningen får inte automatiskt
+uppgradera dem. CI kontrollerar de faktiskt lösta revisionerna efteråt. Vid en
+avsiktlig beroendeuppgradering behöver båda låsfilerna uppdateras och testas.
+
 ## Apples engångsinställningar
 
 1. Logga in på https://developer.apple.com/account/ och registrera Bundle ID

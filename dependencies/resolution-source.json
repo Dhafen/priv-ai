@@ -1,0 +1,5 @@
+{
+  "workflow_run": "https://github.com/Dhafen/priv-ai/actions/runs/38601309532",
+  "swiftlet_revision": "de1a942241f65ac43290cecffc85d69ea5b52310",
+  "note": "App resolution captured in CI. Shared engine-test pins aligned to the app graph; strict resolution and full CI must validate this alignment."
+}

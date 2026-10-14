@@ -28,7 +28,7 @@ platform :ios do
       export_team_id: ENV.fetch('APPLE_TEAM_ID'),
       codesigning_identity: 'Apple Distribution',
       xcargs: [
-        '-skipMacroValidation', 'CODE_SIGN_STYLE=Manual',
+        '-skipMacroValidation', '-onlyUsePackageVersionsFromResolvedFile', 'CODE_SIGN_STYLE=Manual',
         "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
         "CURRENT_PROJECT_VERSION=#{next_build}",
         "PROVISIONING_PROFILE_SPECIFIER=#{ENV.fetch('PROFILE_UUID')}",
