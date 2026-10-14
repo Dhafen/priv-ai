@@ -2,6 +2,12 @@ name: Deliver internal TestFlight beta
 
 on:
   workflow_dispatch:
+    inputs:
+      verified_run_id:
+        description: 'Optional recent run with a successful app verification; only delivery files may differ'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -13,6 +19,11 @@ concurrency:
 jobs:
   check-configuration:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      verify_required: ${{ steps.verification.outputs.required }}
     steps:
       - name: Check Apple configuration without exposing values
         env:
@@ -37,13 +48,61 @@ jobs:
             fi
           done
           exit "$missing"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require matching source before reusing an app verification
+        id: verification
+        env:
+          VERIFIED_RUN_ID: ${{ inputs.verified_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERIFIED_RUN_ID" ]; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [[ "$VERIFIED_RUN_ID" =~ ^[0-9]+$ ]]
+          [ "$GITHUB_REF" = 'refs/heads/main' ]
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN_ID")"
+          verified_sha="$(jq -r '.head_sha' <<< "$run_json")"
+          verified_path="$(jq -r '.path' <<< "$run_json")"
+          [ "$(jq -r '.head_branch' <<< "$run_json")" = 'main' ]
+          [[ "$verified_sha" =~ ^[0-9a-f]{40}$ ]]
+          case "$verified_path" in
+            .github/workflows/ios-verify.yml|.github/workflows/testflight.yml) ;;
+            *) echo '::error::The selected run is not an app verification workflow'; exit 1 ;;
+          esac
+          verified_epoch="$(date -d "$(jq -r '.created_at' <<< "$run_json")" +%s)"
+          age="$(( $(date +%s) - verified_epoch ))"
+          if [ "$age" -lt 0 ] || [ "$age" -gt 86400 ]; then
+            echo '::error::Reused verification must be less than 24 hours old'
+            exit 1
+          fi
+          passed="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN_ID/jobs" \
+            --jq '[.jobs[] | select(.name == "verify" or .name == "verify / verify")] | any(.conclusion == "success")')"
+          [ "$passed" = true ]
+          git merge-base --is-ancestor "$verified_sha" HEAD
+          if ! git diff --quiet "$verified_sha" HEAD -- . \
+            ':!fastlane/Fastfile' ':!.github/workflows/testflight.yml' ':!docs/TESTFLIGHT.md'; then
+            echo '::error::Application or verification inputs changed; run full verification'
+            exit 1
+          fi
+          echo "Reusing successful app verification from run $VERIFIED_RUN_ID at $verified_sha"
+          echo 'required=false' >> "$GITHUB_OUTPUT"
+      - name: Check current model metadata when reusing verification
+        if: steps.verification.outputs.required == 'false'
+        run: python3 scripts/check_model_source.py
 
   verify:
     needs: check-configuration
+    if: needs.check-configuration.outputs.verify_required == 'true'
     uses: ./.github/workflows/ios-verify.yml
 
   deliver:
-    needs: verify
+    needs: [check-configuration, verify]
+    if: ${{ always() && !cancelled() && needs.check-configuration.result == 'success' && (needs.verify.result == 'success' || (needs.verify.result == 'skipped' && needs.check-configuration.outputs.verify_required == 'false')) }}
     runs-on: macos-26
     timeout-minutes: 90
     environment: testflight

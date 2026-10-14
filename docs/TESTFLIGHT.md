@@ -119,6 +119,17 @@ och kontrollerar att bygget är giltigt och finns i den interna testgruppen.
 Kontrollera även i App Store Connect att just ditt Apple-konto ingår i gruppen.
 Certifikat och profiler behöver förnyas före utgångsdatum.
 
+Om enbart leveranskonfigurationen behöver rättas, kan **verified_run_id** anges
+när workflowt startas. Det måste vara en körning från `main`, högst 24 timmar
+gammal, där appens fullständiga verifieringsjobb lyckades. Jobbet kontrollerar
+att körningen är en tidigare commit och att alla filer utom `fastlane/Fastfile`,
+detta leveransworkflow och den här guiden är identiska. Modellens aktuella
+metadata kontrolleras igen. Ändrad appkod, paketlås eller verifieringskod kräver
+full verifiering. Lämnas fältet tomt körs alltid hela verifieringen.
+
+Det signerade arkivet kontrolleras även när tidigare appverifiering återanvänds;
+intern export, uppladdning och Apples bearbetning följer samma steg.
+
 Använd standardrunnern i det offentliga repositoryt för avgiftsfri körtid.
 Inga större betalda runners eller andra betaltjänster behövs. Workflowt lagrar
 inga stora byggartifakter; modellvikter hämtas aldrig av signeringsjobbet.

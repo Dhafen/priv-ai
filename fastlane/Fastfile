@@ -47,7 +47,7 @@ platform :ios do
         uploadSymbols: true
       }
     )
-    sh('python3', 'scripts/verify_app_bundle.py',
+    sh('python3', File.join(ENV.fetch('GITHUB_WORKSPACE'), 'scripts/verify_app_bundle.py'),
        File.join(lane_context[SharedValues::XCODEBUILD_ARCHIVE], 'Products/Applications/localLLM.app'),
        '--signed', ENV.fetch('APPLE_TEAM_ID'))
     File.write(File.join(ENV.fetch('RUNNER_TEMP'), 'privai-build-number'), next_build.to_s)
