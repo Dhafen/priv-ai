@@ -81,8 +81,8 @@ struct ExperimentalModelsView: View {
             expectationRow("clock", "The first reply takes about 30 seconds to start on iPhone 17. Replies stream at about 1 token per second. We are actively making this faster.")
             expectationRow("plus.bubble", "Long conversations slow down. Start a New Chat to stay fast.")
             expectationRow("bubble.left.and.bubble.right", "Chat only for now. Health, Finance, and Journal features need a smaller model (like Qwen 2.5 1.5B). Download one alongside.")
-            expectationRow("internaldrive", "Needs about 18 GB of free storage. Memory stays low because the model streams from storage.")
-            expectationRow("wifi", "The 18 GB download can take an hour or more; Hugging Face limits anonymous download speed. Keep the app open while it runs. If it stops, tap Download again and it continues where it left off.")
+            expectationRow("internaldrive", "The model is a 19.54 GB download. Keep at least 22 GB free on your iPhone, preferably 25 GB. Experts stream from local storage through a 1 GiB cache; the dense core and conversation use additional memory.")
+            expectationRow("wifi", "The download can take an hour or more; Hugging Face limits anonymous download speed. Keep the app open while it runs. If it stops, tap Download again and it continues where it left off. After installation, chat works offline.")
             expectationRow("hammer", "This feature is very new. Quality and speed will improve with updates. Thanks for trying it early.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)

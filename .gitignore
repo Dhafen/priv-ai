@@ -32,3 +32,14 @@ Thumbs.db
 *.p12
 reddit_*.txt
 TODO.md
+
+# Reproducible dependency checkout and signing material
+.dependencies/
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.pfx
+*.ipa
+*.xcarchive/
+private_keys/
+__pycache__/

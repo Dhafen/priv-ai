@@ -1,0 +1,81 @@
+default_platform(:ios)
+
+BUNDLE_ID = 'com.dhafen.privai'
+
+def apple_api_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch('ASC_KEY_ID'),
+    issuer_id: ENV.fetch('ASC_ISSUER_ID'),
+    key_filepath: ENV.fetch('ASC_KEY_PATH'),
+    duration: 1200,
+    in_house: false
+  )
+end
+
+platform :ios do
+  desc 'Build a signed beta and upload it for internal TestFlight testing'
+  lane :beta do
+    api_key = apple_api_key
+    next_build = latest_testflight_build_number(
+      api_key: api_key, app_identifier: BUNDLE_ID, initial_build_number: 0
+    ) + 1
+    build_app(
+      project: 'localLLM.xcodeproj', scheme: 'localLLM', configuration: 'Release',
+      clean: true, skip_package_dependencies_resolution: false,
+      output_directory: File.join(ENV.fetch('RUNNER_TEMP'), 'privai-export'),
+      output_name: 'PrivAI.ipa',
+      export_method: 'app-store',
+      export_team_id: ENV.fetch('APPLE_TEAM_ID'),
+      codesigning_identity: 'Apple Distribution',
+      xcargs: [
+        '-skipMacroValidation', 'CODE_SIGN_STYLE=Manual',
+        "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
+        "CURRENT_PROJECT_VERSION=#{next_build}",
+        "PROVISIONING_PROFILE_SPECIFIER=#{ENV.fetch('PROFILE_UUID')}",
+        "CODE_SIGN_IDENTITY='Apple Distribution'"
+      ].join(' '),
+      export_options: {
+        method: 'app-store-connect', signingStyle: 'manual',
+        teamID: ENV.fetch('APPLE_TEAM_ID'),
+        provisioningProfiles: { BUNDLE_ID => ENV.fetch('PROFILE_UUID') },
+        testFlightInternalTestingOnly: true,
+        manageAppVersionAndBuildNumber: false,
+        uploadSymbols: true
+      }
+    )
+    sh('python3', 'scripts/verify_app_bundle.py',
+       File.join(lane_context[SharedValues::XCODEBUILD_ARCHIVE], 'Products/Applications/localLLM.app'),
+       '--signed', ENV.fetch('APPLE_TEAM_ID'))
+    File.write(File.join(ENV.fetch('RUNNER_TEMP'), 'privai-build-number'), next_build.to_s)
+    upload_to_testflight(
+      api_key: api_key, app_identifier: BUNDLE_ID, apple_id: ENV.fetch('APP_STORE_APP_ID'),
+      distribute_external: false, notify_external_testers: false,
+      skip_submission: true, skip_waiting_for_build_processing: false,
+      wait_processing_timeout_duration: 3600,
+      changelog: 'Priv AI: local Qwen 3.6 35B QPack streaming via Swiftlet. Device performance remains to be tested.'
+    )
+  end
+
+  desc 'Prove that Apple processed this build and assigned it to an internal group'
+  lane :verify_beta do
+    apple_api_key
+    app_id = ENV.fetch('APP_STORE_APP_ID')
+    number = File.read(File.join(ENV.fetch('RUNNER_TEMP'), 'privai-build-number')).strip
+    build = Spaceship::ConnectAPI::Build.all(app_id: app_id, build_number: number).find { |item| item.version == number }
+    UI.user_error!("Processed build #{number} not found") unless build && build.processing_state == 'VALID'
+    groups = Spaceship::ConnectAPI.get_beta_groups(filter: { app: app_id }, includes: 'betaTesters').all_pages.flat_map(&:to_models)
+    group = groups.find { |item| item.id == ENV.fetch('TESTFLIGHT_INTERNAL_GROUP_ID') }
+    UI.user_error!('Target beta group must exist and be internal') unless group && group.is_internal_group
+    # Never call betaAppReviewSubmissions or the public App Store release API.
+    build.add_beta_groups(beta_groups: [group])
+    group_builds = group.fetch_builds
+    UI.user_error!('Build is not attached to the internal group') unless group_builds.any? { |item| item.id == build.id }
+    testers = group.beta_testers || []
+    UI.user_error!('Internal group has no testers; add your Apple account in App Store Connect') if testers.empty?
+    UI.success("TestFlight build #{number}: VALID, internal group assigned, #{testers.count} tester(s). iPhone execution: UNVERIFIED.")
+    File.open(ENV.fetch('GITHUB_STEP_SUMMARY'), 'a') do |file|
+      file.puts("Build #{number} processed by Apple and assigned to the internal TestFlight group. Physical iPhone inference remains unverified.")
+    end
+  end
+end
+

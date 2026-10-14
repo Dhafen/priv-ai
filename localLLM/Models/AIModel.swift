@@ -366,7 +366,7 @@ extension AIModel {
         // ── Streamed MoE (Swiftlet engine) ──────────────────────
         // Runs models far larger than device RAM by streaming experts from
         // storage. Checkpoint is a directory, transferred to
-        // Documents/Models/{id}/ (in-app resumable download coming).
+        // Documents/Models/{id}/ by the resumable in-app installer.
 
         AIModel(
             id: "qwen3.6-35b-a3b-swiftlet",

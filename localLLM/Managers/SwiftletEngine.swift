@@ -48,9 +48,20 @@ final class SwiftletEngine: ObservableObject {
         print("[SwiftletEngine] loading \(model.id) from \(model.localPath.path)")
         let start = Date()
         do {
-            // 1 GB expert cache: benchmarked at full speed on internal-SSD-class
-            // storage, and keeps total footprint ~2.5 GB — safe under jetsam.
+            // Release the previous model before allocating another dense core.
+            unload()
+            // Only verified QPack containers may enter this engine. A raw or
+            // incomplete checkpoint must never activate Swiftlet's heavy CPU
+            // fallback or the unbounded raw-checkpoint mapping path.
+            _ = try Qpack.verify(containerDir: model.localPath)
+            // Bound the expert cache to 1 GiB; dense weights, tokenizer and
+            // generation buffers use additional memory. Measure on the device.
             session = try await SwiftletSession(modelDir: model.localPath, retainAllLayers: false, cacheBudgetGB: 1.0)
+            guard session?.usesGPU == true else {
+                throw NSError(domain: "PrivAI.Swiftlet", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "QPack requires the Metal streaming engine."
+                ])
+            }
             currentModelId = model.id
             isModelLoaded = true
             print(String(format: "[SwiftletEngine] loaded in %.1fs (gpu: %@)",
