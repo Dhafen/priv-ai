@@ -43,6 +43,33 @@ Webbläsarinloggning ensam ger inte byggservern en signeringsidentitet.
 De privata nycklarna och profilen behöver därför sättas upp som GitHub Secrets.
 Ingen av dessa filer eller deras innehåll ska klistras in i chatt eller Git.
 
+### Automatisera signeringsinställningarna från Windows
+
+När appidentifieraren och båda capabilities har registrerats, kan
+`scripts/apple_setup.py` skapa distributionscertifikat och profil och föra över
+privata värden direkt till GitHub Secrets via standard input. Inga privata
+värden skrivs till terminalen. Certifikatets privata nyckel cachelagras under
+`work/signing/distribution.dpapi`, krypterad med Windows DPAPI för din Windows-
+användare. Hela `work/` är undantagen från Git. Använd samma Windows-konto vid
+framtida körningar så att certifikatet kan återanvändas.
+
+```powershell
+python -m pip install -r scripts/requirements-setup.txt
+python scripts/apple_setup.py signing --key-file <lokal-p8-fil> --key-id <key-id> --issuer-id <issuer-id> --team-id <team-id>
+python scripts/apple_setup.py connect --key-file <lokal-p8-fil> --key-id <key-id> --issuer-id <issuer-id> --team-id <team-id> --tester-email <ditt-apple-konto>
+```
+
+Använd en särskild API-nyckel för Priv AI. En administratörsnyckel behövs om
+skriptet även ska skapa certifikat och profiler. Apposten skapas i App Store
+Connects webbgränssnitt. Testgruppen heter `Priv AI Personal`; skriptets connect-
+steg kan kontrollera att just ditt konto finns i gruppen.
+
+Appens exportdeklaration anger ingen icke undantagen kryptering: nätverkets TLS
+och lokal filskyddskryptering använder Apples operativsystem, och Swiftlet
+använder CryptoKit för SHA-256-integritet. Om egen kryptering eller andra SDK:er
+läggs till, behöver deklarationen omprövas enligt
+[Apples dokumentation](https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations).
+
 ## Konfiguration i GitHub
 
 Lägg följande **repository secrets** under Settings → Secrets and variables →
